@@ -1,0 +1,73 @@
+services:
+  # Service qBittorrent
+  qbittorrent:
+    image: linuxserver/qbittorrent
+    container_name: qbittorrent
+    environment:
+      - WEBUI_PORT=8080
+      - PUID=1000  # Utilisez votre UID
+      - PGID=1000  # Utilisez votre GID
+    ports:
+      - "8080:8080"  # Port WebUI de qBittorrent
+      - "6881:6881"  # Port torrent (par défaut)
+      - "6881:6881/udp"  # Port torrent (UDP)
+    volumes:
+      - /qbittorrent/config:/config  # Remplacez par votre répertoire de config qBittorrent
+      - /qbittorrent/downloads:/downloads  # Répertoire où les fichiers seront téléchargés
+    networks:
+      - radarr-network
+    restart: unless-stopped
+
+  # Service Radarr
+  radarr:
+    image: linuxserver/radarr
+    container_name: radarr
+    environment:
+      - PUID=1000  # Utilisez votre UID
+      - PGID=1000  # Utilisez votre GID
+    ports:
+      - "7878:7878"  # Port WebUI de Radarr
+    volumes:
+      - /radarr/config:/config  # Remplacez par votre répertoire de configuration Radarr
+      - /radarr/movies:/movies  # Répertoire où les films seront stockés
+      - /qbittorrent/downloads:/downloads
+    depends_on:
+      - qbittorrent
+    networks:
+      - radarr-network
+    restart: unless-stopped
+
+  # Service Jackett
+  jackett:
+    image: lscr.io/linuxserver/jackett
+    container_name: jackett
+    environment:
+      - PUID=1000
+      - PGID=1000
+    volumes:
+      - /jackett/config:/config
+    ports:
+      - "9117:9117"  # Port par défaut pour l'interface web de Jackett
+    restart: unless-stopped
+    networks:
+      - radarr-network
+
+  # Service Prowlarr
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    environment:
+      - PUID=1000 # Remplacez par votre UID
+      - PGID=1000 # Remplacez par votre GID
+    volumes:
+      - /prowlarr/config:/config
+    ports:
+      - "9696:9696" # Port WebUI de Prowlarr
+    restart: unless-stopped    
+    networks:
+      - radarr-network
+
+# Réseau commun
+networks:
+  radarr-network:
+    driver: bridge
